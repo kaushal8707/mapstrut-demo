@@ -1,0 +1,190 @@
+	Mapstrut - All Mislenious Examples-----------------
+
+
+	POST 	http://localhost:8082/customer
+	
+	Req-
+	{
+    "customerId": 44771,
+    "customerName": "kaushal-1",
+    "countryName": "china",
+    "registrationDate": "11/12/2023"	-- in mapper we have specified date format would be dd/MM/yyyy
+    }
+
+	Resp-
+	{
+		"id": 1,					--bcz we are ignoring customerId in DTo while mapping 
+		"name": "kaushal-1",		
+		"country": "china",			--country name if we don't provide or if blank the default value would be india
+		"registrationDate": "2023-12-11",  -- if we pass date in any format but it will convert and store in db in ISO Date Format yyyy-MM-dd 
+		"type": "New"				-- we are mapping new type only in target entity not from source.
+}
+
+
+----------------------------------------
+
+case - 2 ( while not passing date and country name
+
+==================================================
+
+POST   -   http://localhost:8082/customer
+
+Req-
+{
+    "customerId": 144421,
+    "customerName": "kaushal-2"
+}
+
+Resp-
+
+{
+    "id": 2,
+    "name": "kaushal-2",
+    "country": "India",
+    "registrationDate": "2024-02-29",
+    "type": "New"
+}
+
+-----------------------------------------
+
+case - 3 while only we are passing customer name
+-------------------------------------------------
+
+
+Req-{
+        "customerName": "kaushal-3"
+    }
+
+Resp-
+{
+    "id": 3,
+    "name": "kaushal-3",
+    "country": "India",
+    "registrationDate": "2024-02-29",
+    "type": "New"
+}
+
+-------------------------------------------
+case - 4 
+-------------------------------------------
+GET  -  http://localhost:8082/customer/3
+
+{
+    "customerId": 3,
+    "customerName": "kaushal-3",
+    "countryName": "India",
+    "registrationDate": "29/02/2024"
+}
+
+-------------------------------------------
+
+
+*************************************************************
+controller
+-----------
+
+ @Autowired
+    CustomerService customerService;
+
+    @PostMapping("/customer")
+    public ResponseEntity<Customer> saveCustomer(@RequestBody CustomerDTO customerDTO) {
+        return ResponseEntity.ok(customerService.saveCustomer(customerDTO));
+    }
+
+    @GetMapping("/customer/{id}")
+    public ResponseEntity<CustomerDTO> getCustomerById(@PathVariable Long id) {
+        return ResponseEntity.ok(customerService.getCustomerById(id));
+    }
+}
+
+
+
+dto
+-------
+
+@Data
+public class CustomerDTO {
+    private Long customerId;
+    private String customerName;
+    private String countryName;
+    private String registrationDate;
+}
+
+
+entity
+--------
+
+@Entity
+@Table(name="customer")
+@Data
+public class Customer {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name="id")
+    private Long id;
+
+    @Column(name="name")
+    private String name;
+
+    @Column(name="country")
+    private String country;
+
+    @Column(name="registration_date")
+    private LocalDate registrationDate;
+
+    @Column(name="type")
+    private String type;
+}
+
+
+service
+---------
+
+@Service
+public class CustomerService {
+
+    @Autowired
+    CustomerRepository customerRepository;
+
+    @Autowired
+    CustomerMapper customerMapper;
+
+    public Customer saveCustomer(CustomerDTO customerDTO) {
+        return customerRepository.save(customerMapper.toEntity(customerDTO));
+    }
+
+    public CustomerDTO getCustomerById(Long id) {
+        return customerRepository.findById(id)
+                .map(customerMapper::toDTO)
+                .orElse(new CustomerDTO());
+    }
+}
+
+
+mapper
+---------
+
+@Mapper(componentModel = "spring",imports= {LocalDate.class})
+public interface CustomerMapper {
+
+    @Mapping(source="customerId",target="id",ignore = true)
+    @Mapping(source="customerName",target="name")
+    @Mapping(source="countryName",target="country",defaultValue = "India")
+    @Mapping(source="registrationDate",target="registrationDate",dateFormat ="dd/MM/yyyy",defaultExpression = "java(LocalDate.now())")
+    @Mapping(target="type",constant="New")
+    Customer toEntity(CustomerDTO customerDTO);
+
+	/*@Mapping(source="id",target="customerId")
+	@Mapping(source="name",target="customerName")
+	@Mapping(source="country",target="countryName")
+	@Mapping(source="registrationDate",target="registrationDate",dateFormat ="dd/MM/yyyy")*/
+
+    @InheritInverseConfiguration
+    @Mapping(source="id",target="customerId")
+    CustomerDTO toDTO(Customer customer);
+
+}
+
+
+
+
