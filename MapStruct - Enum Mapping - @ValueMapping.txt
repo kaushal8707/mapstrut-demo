@@ -1,0 +1,170 @@
+MapStruct - Enum Mapping | @ValueMapping
+=========================================
+
+controller
+-----------
+
+@RestController
+public class TransactionController {
+    @Autowired
+    TransactionService transactionService;
+
+    @PostMapping("/transaction")
+    public ResponseEntity<TransactionViewDTO> getTransactionDetails(@RequestBody TransactionDTO transactionDTO) {
+        return ResponseEntity.ok(transactionService.getTransactionDetails(transactionDTO));
+    }
+}
+
+-----------
+
+dto
+--------
+public enum PaymentType {
+    COD,
+    NETBANKING,
+    UPI,
+    CREDIT_CARD,
+    DEBIT_CARD
+}
+
+public enum PaymentViewType {
+	
+	COD,
+	NET_BANKING,
+	UPI,
+	CARD
+}
+
+@Data
+public class TransactionDTO {
+
+    private String transactionId;
+
+    private PaymentType paymentType;
+
+}
+
+@Data
+public class TransactionViewDTO {
+
+	private String transactionId;
+	
+	private PaymentViewType paymentViewType;
+}
+
+
+--------------
+
+service
+--------
+
+@Service
+public class TransactionService {
+    @Autowired
+    TransactionMapper transactionMapper;
+
+    public TransactionViewDTO getTransactionDetails(TransactionDTO transactionDTO) {
+
+        return transactionMapper.toViewDTO(transactionDTO);
+    }
+}
+
+----------------
+mapper
+--------
+Scenario 1
+============
+
+// Mapping Enum
+
+@Mapper(componentModel = "spring")
+public interface TransactionMapper {
+
+    @ValueMapping(source = "NETBANKING", target = "NET_BANKING")
+    @ValueMapping(source = "CREDIT_CARD", target = "CARD")
+    @ValueMapping(source = "DEBIT_CARD", target = "CARD")
+    @Mapping(source = "paymentType", target ="paymentViewType" )
+    TransactionViewDTO toViewDTO(TransactionDTO transactionDTO);
+
+}
+
+
+Testing
+----------
+1..........
+
+POST   http://localhost:8082/transaction
+
+Req-
+{
+    "transactionId":"tx8716",
+    "paymentType":"CREDIT_CARD"
+}
+Resp-
+{
+    "transactionId": "tx8716",
+    "paymentViewType": "CARD"
+}
+
+2.........
+
+POST   http://localhost:8082/transaction
+
+Req-
+{
+    "transactionId":"tx8716",
+    "paymentType":"NETBANKING"
+}
+
+Resp-
+{
+    "transactionId": "tx8716",
+    "paymentViewType": "NET_BANKING"
+}
+
+
+
+
+
+
+----------------
+mapper
+--------
+Scenario 2
+============
+
+// Mapping Enum
+
+@Mapper(componentModel = "spring")
+public interface TransactionMapper {
+
+    @ValueMapping(source = "NETBANKING", target = "NET_BANKING")
+//    @ValueMapping(source = "CREDIT_CARD", target = "CARD")
+//    @ValueMapping(source = "DEBIT_CARD", target = "CARD")
+    @Mapping(source = "paymentType", target ="paymentViewType" )
+
+  //@ValueMapping(source = MappingConstants.ANY_REMAINING, target = "CARD") //ANY_REMAINING map default value first then any other values will be mapped to a general one.
+    @ValueMapping(source = MappingConstants.ANY_UNMAPPED, target = "CARD")   // ANY_UNMAPPED, instead of mapping the default value first ,it will map all the unmapped value .
+
+    TransactionViewDTO toViewDTO(TransactionDTO transactionDTO);
+
+}
+
+Testing
+===========
+scenario test
+-------------
+
+POST  http://localhost:8082/transaction
+
+
+Req-
+{
+    "transactionId":"tx987654321",
+    "paymentType":"CREDIT_CARD"
+}
+Resp-
+{
+    "transactionId": "tx987654321",
+    "paymentViewType": "CARD"
+}

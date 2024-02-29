@@ -1,0 +1,110 @@
+MapStruct - Custom Mapping 
+==========================
+
+POST    http://localhost:8082/order
+
+Req-
+{
+    "orderAmount":"4444",
+    "description":"order-7",
+    "orderDate":"2023-Dec-19",
+    "orderStatus": "Delivered"
+}
+
+Resp-
+
+{
+    "id": 105,
+    "amount": 4444.0,
+    "description": "order-7",
+    "date": "2023-12-19",
+    "status": true
+}
+
+GET
+
+GET    http://localhost:8082/order/105
+
+Resp-
+
+{
+    "id": 105,
+    "orderAmount": "4444.0",
+    "description": "order-7",
+    "orderDate": "2023-Dec-19",
+    "orderStatus": "Delivered"
+}
+------------------------------------------------
+
+public class OrderDTO {
+
+    private Long id;
+    private String orderAmount;
+    private String description;
+    private String orderDate;
+    private String orderStatus;
+}
+
+--------------------
+
+@Data
+@Entity
+@Table(name="order_details")
+@ToString
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "amount")
+    private float amount;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "order_date")
+    private LocalDate date;
+
+    @Column(name="status")
+    private boolean status;
+}
+
+---------------------
+
+
+@Mapper(componentModel = "spring")
+public interface OrderMapper {
+    @Mapping(source = "orderAmount", target = "amount")
+    @Mapping(source = "orderDate", target = "date", dateFormat = "yyyy-MMM-dd")
+    @Mapping(source="orderStatus",target="status",qualifiedByName = "checkOrderStatus")    // checkOrderStatus is method name using to map from string to boolean
+    Order toEntity(OrderDTO orderDTO);
+
+    @Mapping(source = "amount", target = "orderAmount")
+    @Mapping(source = "date", target = "orderDate", dateFormat = "yyyy-MMM-dd")
+    @Mapping(source="status",target="orderStatus",qualifiedByName="checkOrderStatusInString")
+    OrderDTO toDTO(Order order);
+
+    @Named("checkOrderStatus")
+    default boolean checkOrderStatus(String orderStatus) {    //input as string and output be a boolean
+        boolean flag;                                           //default method in an interface
+        if(orderStatus.equals("Delivered")) {
+            flag = true;
+        }else {
+            flag = false;
+        }
+        return flag;
+    }
+
+    @Named("checkOrderStatusInString")
+    default String checkOrderStatusInString(boolean status) {
+        String orderStatus;
+        if(status) {
+            orderStatus = "Delivered";
+        }else {
+            orderStatus = "Pending";
+        }
+        return orderStatus;
+    }
+}
+

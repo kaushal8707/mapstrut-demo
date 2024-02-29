@@ -1,0 +1,118 @@
+@BeforeMapping Test
+========================
+
+
+ POST   http://localhost:8082/order
+
+Req-
+{
+    "orderAmount":"0101",
+    "description":"order-8",
+    "orderDate":"2023-Apr-19",
+    "orderStatus":"Delivered",
+    "quantity":0 
+}
+
+Res-
+{
+    "id": 152,
+    "amount": 101.0,
+    "description": "order-8",
+    "date": "2023-04-19",
+    "status": true,
+    "quantity": 1
+}
+
+
+@AfterMapping Test
+=====================
+
+GET http://localhost:8082/order/152
+
+{
+    "id": 152,
+    "orderAmount": "101.0",
+    "description": "order-8",
+    "orderDate": "2023-Apr-19",
+    "orderStatus": "Delivered",
+    "quantity": 1,
+    "sum": 101.0
+}
+
+------------------
+entity & dto
+------------------
+@Data
+public class OrderDTO {
+
+    private Long id;
+    private String orderAmount;
+    private String description;
+    private String orderDate;
+    private String orderStatus;
+
+    private int quantity;    // used for @BeforeMapping
+    private float sum;       // used for @AfterMapping
+}
+
+
+@Data
+@Entity
+@Table(name="order_details")
+@ToString
+public class Order {
+    @Id
+    @GeneratedValue(strategy = GenerationType.AUTO)
+    @Column(name = "id")
+    private Long id;
+
+    @Column(name = "amount")
+    private float amount;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "order_date")
+    private LocalDate date;
+
+    @Column(name="status")
+    private boolean status;
+
+    @Column(name="quantity")
+    private int quantity;
+}
+
+
+---------------------
+
+@Mapper(componentModel = "spring")
+public interface OrderMapper {
+
+    @BeforeMapping
+    default void validate(OrderDTO orderDTO) {
+        if(orderDTO.getQuantity()==0) {
+            orderDTO.setQuantity(1);
+        }
+    }
+    @Mapping(source = "orderAmount", target = "amount")
+    @Mapping(source = "orderDate", target = "date", dateFormat = "yyyy-MMM-dd")
+    @Mapping(source="orderStatus",target="status",qualifiedByName = "checkOrderStatus")    // checkOrderStatus is method name using to map from string to boolean
+    Order toEntity(OrderDTO orderDTO);
+
+    @Mapping(source = "amount", target = "orderAmount")
+    @Mapping(source = "date", target = "orderDate", dateFormat = "yyyy-MMM-dd")
+    @Mapping(source="status",target="orderStatus",qualifiedByName="checkOrderStatusInString")
+    OrderDTO toDTO(Order order);
+
+    @AfterMapping
+    default void calculateSum(Order order,@MappingTarget OrderDTO orderDto) {
+        float sum = 0;
+        if(order.getQuantity()!=0 && order.getAmount() !=0) {
+            sum = sum + (order.getQuantity()*order.getAmount());
+            orderDto.setSum(sum);
+        }
+
+    }
+}
+  
+  
